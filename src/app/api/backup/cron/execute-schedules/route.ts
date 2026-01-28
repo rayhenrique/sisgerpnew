@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scheduleService } from '@/server/backup/services/scheduleService';
+import { isProduction } from "@/lib/env";
 
 /**
  * POST /api/backup/cron/execute-schedules
@@ -28,6 +29,8 @@ import { scheduleService } from '@/server/backup/services/scheduleService';
  */
 export async function POST(request: NextRequest) {
   try {
+    const verbose = !isProduction();
+
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Get all schedules that are due to run
     const dueSchedules = await scheduleService.getDueSchedules();
 
-    console.log(`Found ${dueSchedules.length} due schedules to execute`);
+    if (verbose) console.log(`Found ${dueSchedules.length} due schedules to execute`);
 
     const results = {
       total: dueSchedules.length,
@@ -63,10 +66,10 @@ export async function POST(request: NextRequest) {
     // Execute each due schedule
     for (const schedule of dueSchedules) {
       try {
-        console.log(`Executing schedule: ${schedule.name} (${schedule.id})`);
+        if (verbose) console.log(`Executing schedule: ${schedule.name} (${schedule.id})`);
         await scheduleService.executeSchedule(schedule);
         results.successful++;
-        console.log(`Successfully executed schedule: ${schedule.name}`);
+        if (verbose) console.log(`Successfully executed schedule: ${schedule.name}`);
       } catch (error) {
         results.failed++;
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

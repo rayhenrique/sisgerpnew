@@ -129,13 +129,18 @@ npm install
 
 3. Set up environment variables:
 
-Create a `.env.local` file in the root directory:
+Copy `.env.example` to `.env.local` and fill the values:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 CRON_SECRET=your_cron_secret
 ```
+
+Notes:
+- `npm start` runs in production mode and requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to be set, otherwise login will fail.
+- `NEXT_PUBLIC_*` variables are embedded during `npm run build`. If you change them, delete `.next/` and rebuild.
+- Never commit `.env.local` (it contains secrets).
 
 4. Apply database migrations:
 ```bash
@@ -152,6 +157,19 @@ npm run dev
 ```
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Production
+
+### Local production test
+```bash
+npm run build
+node .next/standalone/server.js
+```
+
+### VPS/CloudPanel
+- Set environment variables in your platform (CloudPanel Environment Variables), do not store secrets in the repository.
+- Build command: `npm ci && npm run build`
+- Start command: `npm start` (or `node server.js` if using the standalone output)
 
 ### Database Setup
 

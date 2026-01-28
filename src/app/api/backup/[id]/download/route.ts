@@ -52,9 +52,10 @@ export async function GET(
     // Generate download URL
     const downloadUrl = await backupController.handleDownloadBackup(actor, id);
     
-    return NextResponse.json({ 
+    return NextResponse.json({
+      downloadUrl,
       url: downloadUrl,
-      expiresInSeconds: 3600 
+      expiresInSeconds: 3600,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro ao gerar URL de download";

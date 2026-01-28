@@ -250,7 +250,7 @@ export class RestoreService {
           deleteQuery = deleteQuery.neq('id', '00000000-0000-0000-0000-000000000000');
         } else {
           // Bigint: use numeric comparison
-          deleteQuery = deleteQuery.gte('id', 0);
+          deleteQuery = deleteQuery.neq('id', -1);
         }
 
         const { error: deleteError } = await deleteQuery;

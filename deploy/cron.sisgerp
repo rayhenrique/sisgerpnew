@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+APP_URL=http://127.0.0.1:3000
+CRON_SECRET=REPLACE_ME
+0 * * * * root curl -fsS -X POST -H "Authorization: Bearer ${CRON_SECRET}" "${APP_URL}/api/backup/cron/execute-schedules" >/var/log/sisgerp/cron-execute-schedules.log 2>&1
+0 2 * * * root curl -fsS -X POST -H "Authorization: Bearer ${CRON_SECRET}" "${APP_URL}/api/backup/cron/apply-retention" >/var/log/sisgerp/cron-apply-retention.log 2>&1

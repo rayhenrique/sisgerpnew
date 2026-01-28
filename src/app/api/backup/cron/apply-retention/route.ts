@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { retentionService } from '@/server/backup/services/retentionService';
 import { getSupabaseServiceRoleClient } from '@/lib/supabase/server';
+import { isProduction } from "@/lib/env";
 
 /**
  * POST /api/backup/cron/apply-retention
@@ -31,6 +32,8 @@ import { getSupabaseServiceRoleClient } from '@/lib/supabase/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    const verbose = !isProduction();
+
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Starting retention policy application');
+    if (verbose) console.log('Starting retention policy application');
 
     // Get all organizations (for multi-tenant support)
     const supabase = getSupabaseServiceRoleClient();
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Apply retention policy to each organization
     for (const orgId of organizations) {
       try {
-        console.log(`Applying retention policy for organization: ${orgId || 'default'}`);
+        if (verbose) console.log(`Applying retention policy for organization: ${orgId || 'default'}`);
         
         const deletedCount = await retentionService.applyRetentionPolicy(orgId);
         
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
           deleted: deletedCount,
         });
 
-        console.log(`Deleted ${deletedCount} expired backups for organization: ${orgId || 'default'}`);
+        if (verbose) console.log(`Deleted ${deletedCount} expired backups for organization: ${orgId || 'default'}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         results.organizationResults.push({

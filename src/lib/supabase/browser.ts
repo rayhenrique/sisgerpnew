@@ -1,12 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { requiredPublicEnvInProduction } from "@/lib/env";
 
 let browserClient: ReturnType<typeof createClient> | null = null;
 
 export function getSupabaseBrowserClient(options?: {
   persistSession?: boolean;
 }) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = requiredPublicEnvInProduction("NEXT_PUBLIC_SUPABASE_URL");
+  const anonKey = requiredPublicEnvInProduction("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
   if (!url || !anonKey) return null;
 

@@ -10,6 +10,7 @@ import { adminNav, getPageTitle, primaryNav, type NavItem } from "@/components/a
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useMyProfile } from "@/features/adminUsers/useMyProfile";
 import { canManageUsers } from "@/features/adminUsers/rbac";
+import { fetchCitySettings } from "@/features/settings/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -89,6 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const adminActive = pathname.startsWith("/admin");
   const [adminOpen, setAdminOpen] = React.useState(adminActive);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [cityName, setCityName] = React.useState<string | null>(null);
 
   const { profile } = useMyProfile();
   const showAdmin = profile ? canManageUsers(profile.role) : false;
@@ -108,6 +110,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const settings = await fetchCitySettings();
+        if (cancelled) return;
+        setCityName(settings?.city_name ?? null);
+      } catch {
+        if (cancelled) return;
+        setCityName(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const todayLabel = React.useMemo(() => {
+    return new Intl.DateTimeFormat("pt-BR").format(new Date());
+  }, []);
 
   const SidebarContent = (
     <>
@@ -169,8 +192,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="px-4 pb-4">
         <div className="rounded-lg bg-white/10 p-3">
-          <div className="text-xs font-medium text-white/80">Environment</div>
-          <div className="mt-1 text-xs text-white/70">Development</div>
+          <div className="text-xs font-medium text-white/80">Município / Data</div>
+          <div className="mt-1 truncate text-xs text-white/70">
+            {cityName ?? "Município não configurado"} • {todayLabel}
+          </div>
         </div>
       </div>
     </>
