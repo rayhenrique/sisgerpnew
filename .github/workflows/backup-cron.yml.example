@@ -1,0 +1,66 @@
+# Backup Module Cron Jobs
+#
+# This workflow executes backup schedules and applies retention policies automatically.
+# 
+# Setup:
+# 1. Rename this file to backup-cron.yml (remove .example)
+# 2. Add CRON_SECRET to your GitHub repository secrets
+# 3. Update PRODUCTION_URL with your actual domain
+# 4. Commit and push to enable the workflow
+
+name: Backup Cron Jobs
+
+on:
+  schedule:
+    # Execute backup schedules every hour
+    - cron: '0 * * * *'
+    # Apply retention policy daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger for testing
+
+jobs:
+  execute-schedules:
+    name: Execute Backup Schedules
+    runs-on: ubuntu-latest
+    # Only run on hourly schedule or manual trigger
+    if: github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Execute Backup Schedules
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://PRODUCTION_URL/api/backup/cron/execute-schedules)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Error: HTTP $http_code"
+            exit 1
+          fi
+
+  apply-retention:
+    name: Apply Retention Policy
+    runs-on: ubuntu-latest
+    # Only run on daily schedule or manual trigger
+    if: github.event.schedule == '0 2 * * *' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Apply Retention Policy
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://PRODUCTION_URL/api/backup/cron/apply-retention)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Error: HTTP $http_code"
+            exit 1
+          fi

@@ -1,0 +1,18 @@
+{
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/backup/cron/execute-schedules",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/backup/cron/apply-retention",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
+

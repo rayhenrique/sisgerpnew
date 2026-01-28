@@ -1,0 +1,36 @@
+.DS_Store
+
+# dependencies
+node_modules/
+web/node_modules/
+
+# next.js
+.next/
+web/.next/
+out/
+web/out/
+
+# testing
+coverage/
+web/coverage/
+
+# production
+build/
+web/build/
+
+# env files
+.env*
+!.env.example
+
+# vercel
+.vercel/
+web/.vercel/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
