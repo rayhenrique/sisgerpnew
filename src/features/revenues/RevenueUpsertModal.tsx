@@ -8,7 +8,12 @@ import { Controller, useForm } from "react-hook-form";
 import { fetchCategories } from "@/features/categories/api";
 import type { Category, CategoryType } from "@/features/categories/types";
 import { createRevenue, updateRevenue } from "@/features/revenues/api";
-import { parseBRLCurrencyToNumber } from "@/features/revenues/currency";
+import {
+  formatBRLCurrencyInput,
+  formatBRLCurrencyTextFromCentsInput,
+  MAX_BRL_AMOUNT,
+  parseBRLCurrencyToNumber,
+} from "@/features/revenues/currency";
 import type { Revenue, RevenueRow } from "@/features/revenues/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +27,85 @@ import { Input } from "@/components/ui/input";
 
 type Mode = "create" | "edit";
 
+const MAX_AMOUNT_LABEL = `R$ ${formatBRLCurrencyInput(MAX_BRL_AMOUNT)}`;
+
+function BRLCentsInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const setCaretToEnd = React.useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const v = el.value;
+    el.setSelectionRange(v.length, v.length);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!value) return;
+    setCaretToEnd();
+  }, [setCaretToEnd, value]);
+
+  return (
+    <Input
+      ref={inputRef}
+      inputMode="numeric"
+      pattern="\\d*"
+      placeholder="R$ 0,00"
+      value={value}
+      onFocus={() => {
+        if (!value) return;
+        requestAnimationFrame(setCaretToEnd);
+      }}
+      onClick={() => {
+        if (!value) return;
+        requestAnimationFrame(setCaretToEnd);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const digits = e.clipboardData.getData("text").replace(/[^\d]/g, "");
+        if (!digits) return;
+        onChange(formatBRLCurrencyTextFromCentsInput(digits));
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Backspace" && e.key !== "Delete") return;
+        e.preventDefault();
+
+        const currentDigits = value.replace(/[^\d]/g, "");
+        if (!currentDigits) {
+          onChange("");
+          return;
+        }
+
+        const el = inputRef.current;
+        const selectionStart = el?.selectionStart;
+        const selectionEnd = el?.selectionEnd;
+        const deletingSelection =
+          selectionStart != null &&
+          selectionEnd != null &&
+          selectionStart !== selectionEnd;
+
+        if (deletingSelection) {
+          onChange("");
+          return;
+        }
+
+        const nextDigits = currentDigits.slice(0, -1);
+        onChange(nextDigits ? formatBRLCurrencyTextFromCentsInput(nextDigits) : "");
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        const formatted = formatBRLCurrencyTextFromCentsInput(raw);
+        onChange(formatted);
+      }}
+    />
+  );
+}
+
 const schema = z.object({
   description: z.string().trim().min(2, "Informe a descrição"),
   amountText: z
@@ -31,7 +115,11 @@ const schema = z.object({
     .refine((v) => {
       const parsed = parseBRLCurrencyToNumber(v);
       return Number.isFinite(parsed) && parsed > 0;
-    }, "Valor inválido"),
+    }, "Valor inválido")
+    .refine((v) => {
+      const parsed = parseBRLCurrencyToNumber(v);
+      return Number.isFinite(parsed) && parsed <= MAX_BRL_AMOUNT;
+    }, `Valor máximo é ${MAX_AMOUNT_LABEL}`),
   date: z.string().min(1, "Informe a data"),
   fonteId: z.string().min(1, "Selecione a fonte"),
   blocoId: z.string().min(1, "Selecione o bloco"),
@@ -125,10 +213,7 @@ export function RevenueUpsertModal({
       description: revenue?.description ?? "",
       amountText:
         revenue?.amount != null
-          ? new Intl.NumberFormat("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(revenue.amount)
+          ? `R$ ${formatBRLCurrencyInput(revenue.amount)}`
           : "",
       date: revenue?.date ? revenue.date.slice(0, 10) : "",
       fonteId: revenue?.source_id ?? "",
@@ -178,10 +263,7 @@ export function RevenueUpsertModal({
       description: revenue?.description ?? "",
       amountText:
         revenue?.amount != null
-          ? new Intl.NumberFormat("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(revenue.amount)
+          ? `R$ ${formatBRLCurrencyInput(revenue.amount)}`
           : "",
       date: revenue?.date ? revenue.date.slice(0, 10) : "",
       fonteId: revenue?.source_id ?? "",
@@ -244,6 +326,10 @@ export function RevenueUpsertModal({
     const amount = parseBRLCurrencyToNumber(values.amountText);
     if (!Number.isFinite(amount) || amount <= 0) {
       setSaveError("Valor inválido");
+      return;
+    }
+    if (amount > MAX_BRL_AMOUNT) {
+      setSaveError(`Valor máximo é ${MAX_AMOUNT_LABEL}`);
       return;
     }
 
@@ -318,12 +404,7 @@ export function RevenueUpsertModal({
                 control={control}
                 name="amountText"
                 render={({ field }) => (
-                  <Input
-                    inputMode="decimal"
-                    placeholder="0,00"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value)}
-                  />
+                  <BRLCentsInput value={field.value} onChange={field.onChange} />
                 )}
               />
               {errors.amountText ? (
