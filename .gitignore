@@ -37,3 +37,6 @@ yarn-error.log*
 
 # Trae IDE
 .trae/
+
+# Local database exports
+referencia/*.sql
