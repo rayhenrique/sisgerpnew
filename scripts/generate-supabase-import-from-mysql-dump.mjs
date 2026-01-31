@@ -12,29 +12,39 @@ function getArg(name) {
 const inputPath = getArg("--input");
 const outputPath = getArg("--output");
 const mode = getArg("--mode") ?? "replace";
+const preset = getArg("--preset");
 
 if (!inputPath || !outputPath) {
   process.stderr.write(
     [
       "Uso:",
       "  node scripts/generate-supabase-import-from-mysql-dump.mjs --input <dump.sql> --output <import.sql> [--mode replace|append]",
+      "  node scripts/generate-supabase-import-from-mysql-dump.mjs --preset sisgerp-domain --input <dump.sql> --output <import.sql> [--mode replace|append]",
+      "  node scripts/generate-supabase-import-from-mysql-dump.mjs --preset sisgerp-dump2 --input <dump.sql> --output <import.sql> [--mode replace|append]",
       "",
       "Notas:",
       "- mode=replace gera TRUNCATE das tabelas-alvo antes de inserir.",
       "- mode=append não trunca; pode falhar por conflito de IDs/PK.",
+      "- preset=sisgerp-domain migra apenas tabelas de domínio (sem logs/usuários).",
+      "- preset=sisgerp-dump2 também converte users→legacy_users e audit_logs→audit_logs(legacy_*).",
       "",
     ].join("\n")
   );
   process.exit(1);
 }
 
-const targetTables = [
-  "categories",
-  "expense_classifications",
-  "city_settings",
-  "revenues",
-  "expenses",
-];
+const targetTables =
+  preset === "sisgerp-dump2"
+    ? [
+        "categories",
+        "expense_classifications",
+        "city_settings",
+        "revenues",
+        "expenses",
+        "audit_logs",
+        "users",
+      ]
+    : ["categories", "expense_classifications", "city_settings", "revenues", "expenses"];
 
 const inputSql = fs.readFileSync(inputPath, "utf8");
 
@@ -167,6 +177,46 @@ function quoteSqlString(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+function unescapeMySqlBackslashString(value) {
+  return value
+    .replaceAll("\\\\", "\\")
+    .replaceAll("\\'", "'")
+    .replaceAll('\\"', '"')
+    .replaceAll("\\n", "\n")
+    .replaceAll("\\r", "\r")
+    .replaceAll("\\t", "\t");
+}
+
+function normalizeMySqlStringToken(token) {
+  const t = token.trim();
+  if (isNullToken(t)) return "NULL";
+  if (t.length < 2 || t[0] !== "'" || t[t.length - 1] !== "'") return token;
+
+  const inner = t.slice(1, -1).replaceAll("''", "'");
+  const decoded = inner.replaceAll(/\\(.)/g, (_, ch) => {
+    if (ch === "0") return "\0";
+    if (ch === "b") return "\b";
+    if (ch === "n") return "\n";
+    if (ch === "r") return "\r";
+    if (ch === "t") return "\t";
+    if (ch === "Z") return "\x1a";
+    if (ch === "'") return "'";
+    if (ch === '"') return '"';
+    if (ch === "\\") return "\\";
+    return ch;
+  });
+
+  return quoteSqlString(decoded);
+}
+
+function normalizeMySqlJsonLiteral(token) {
+  if (isNullToken(token)) return "NULL";
+  const parsed = parseSqlStringLiteral(token);
+  if (parsed == null) return token;
+  const unescaped = unescapeMySqlBackslashString(parsed);
+  return quoteSqlString(unescaped);
+}
+
 function rewriteCiUniqueByName({
   rows,
   idIndex,
@@ -257,10 +307,14 @@ function rewriteInsertForPostgres(insertSql, booleanColumnsByTable) {
     if (booleanCols.has(columns[i])) booleanIndexes.push(i);
   }
 
-  if (booleanIndexes.length === 0) return normalized + "\n";
-
   const tuples = splitTuples(valuesRaw);
   const parsedRows = tuples.map((t) => parseTuple(t));
+
+  for (const values of parsedRows) {
+    for (let i = 0; i < values.length; i++) {
+      values[i] = normalizeMySqlStringToken(values[i] ?? "NULL");
+    }
+  }
 
   for (const values of parsedRows) {
     for (const idx of booleanIndexes) {
@@ -333,13 +387,142 @@ function normalizeInsert(sql) {
 const booleanColumnsByTable = {
   categories: ["active"],
   expense_classifications: ["active"],
+  users: ["active"],
 };
+
+function rewriteUsersToLegacyUsers(insertSql) {
+  const normalized = insertSql.trim();
+  const match = normalized.match(
+    /^INSERT INTO public\.users\s*\(([\s\S]*?)\)\s*VALUES\s*([\s\S]*);$/m
+  );
+  if (!match) return normalized + "\n";
+
+  const columns = match[1]
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const valuesRaw = match[2];
+
+  const tuples = splitTuples(valuesRaw);
+  const rows = tuples.map((t) => parseTuple(t));
+
+  const idx = (name) => columns.indexOf(name);
+  const idIndex = idx("id");
+  const nameIndex = idx("name");
+  const emailIndex = idx("email");
+  const emailVerifiedAtIndex = idx("email_verified_at");
+  const passwordIndex = idx("password");
+  const roleIndex = idx("role");
+  const activeIndex = idx("active");
+  const createdAtIndex = idx("created_at");
+  const updatedAtIndex = idx("updated_at");
+
+  const outColumns = [
+    "id",
+    "name",
+    "email",
+    "email_verified_at",
+    "password_hash",
+    "role",
+    "active",
+    "created_at",
+    "updated_at",
+  ];
+
+  const outRows = rows.map((r) => {
+    const activeRaw = (r[activeIndex] ?? "").trim();
+    const active = activeRaw === "0" ? "false" : "true";
+    return [
+      r[idIndex],
+      normalizeMySqlStringToken(r[nameIndex] ?? "NULL"),
+      normalizeMySqlStringToken(r[emailIndex] ?? "NULL"),
+      r[emailVerifiedAtIndex],
+      normalizeMySqlStringToken(r[passwordIndex] ?? "NULL"),
+      normalizeMySqlStringToken(r[roleIndex] ?? "NULL"),
+      active,
+      r[createdAtIndex],
+      r[updatedAtIndex],
+    ];
+  });
+
+  const rewrittenTuples = outRows.map((row) => formatTuple(row));
+  return `INSERT INTO public.legacy_users (${outColumns.join(
+    ", "
+  )}) VALUES\n${rewrittenTuples.join(",\n")};\n`;
+}
+
+function rewriteAuditLogsToLegacyColumns(insertSql) {
+  const normalized = insertSql.trim();
+  const match = normalized.match(
+    /^INSERT INTO public\.audit_logs\s*\(([\s\S]*?)\)\s*VALUES\s*([\s\S]*);$/m
+  );
+  if (!match) return normalized + "\n";
+
+  const columns = match[1]
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const valuesRaw = match[2];
+
+  const tuples = splitTuples(valuesRaw);
+  const rows = tuples.map((t) => parseTuple(t));
+
+  const idx = (name) => columns.indexOf(name);
+  const idIndex = idx("id");
+  const userIdIndex = idx("user_id");
+  const actionIndex = idx("action");
+  const modelTypeIndex = idx("model_type");
+  const modelIdIndex = idx("model_id");
+  const oldValuesIndex = idx("old_values");
+  const newValuesIndex = idx("new_values");
+  const createdAtIndex = idx("created_at");
+  const updatedAtIndex = idx("updated_at");
+
+  const outColumns = [
+    "legacy_id",
+    "legacy_user_id",
+    "action",
+    "model_type",
+    "model_id",
+    "old_values",
+    "new_values",
+    "created_at",
+    "updated_at",
+  ];
+
+  const outRows = rows.map((r) => {
+    const oldValues = normalizeMySqlJsonLiteral(r[oldValuesIndex] ?? "NULL");
+    const newValues = normalizeMySqlJsonLiteral(r[newValuesIndex] ?? "NULL");
+    return [
+      r[idIndex],
+      r[userIdIndex],
+      normalizeMySqlStringToken(r[actionIndex] ?? "NULL"),
+      normalizeMySqlStringToken(r[modelTypeIndex] ?? "NULL"),
+      r[modelIdIndex],
+      oldValues,
+      newValues,
+      r[createdAtIndex],
+      r[updatedAtIndex],
+    ];
+  });
+
+  const rewrittenTuples = outRows.map((row) => formatTuple(row));
+  return `INSERT INTO public.audit_logs (${outColumns.join(
+    ", "
+  )}) VALUES\n${rewrittenTuples.join(",\n")};\n`;
+}
+
+function transformInsertBlock(table, normalized) {
+  if (table === "users") return rewriteUsersToLegacyUsers(normalized);
+  if (table === "audit_logs") return rewriteAuditLogsToLegacyColumns(normalized);
+  return rewriteInsertForPostgres(normalized, booleanColumnsByTable);
+}
 
 const blocks = [];
 for (const table of targetTables) {
   for (const block of extractInsertBlocks(table)) {
     const normalized = normalizeInsert(block);
-    blocks.push(rewriteInsertForPostgres(normalized, booleanColumnsByTable));
+    blocks.push(transformInsertBlock(table, normalized));
   }
 }
 
@@ -356,7 +539,9 @@ header.push("set statement_timeout = 0;");
 
 if (mode === "replace") {
   header.push(
-    "truncate table public.expenses, public.revenues, public.expense_classifications, public.categories, public.city_settings restart identity cascade;"
+    preset === "sisgerp-dump2"
+      ? "truncate table public.audit_logs, public.legacy_users, public.expenses, public.revenues, public.expense_classifications, public.categories, public.city_settings restart identity cascade;"
+      : "truncate table public.expenses, public.revenues, public.expense_classifications, public.categories, public.city_settings restart identity cascade;"
   );
 } else if (mode !== "append") {
   process.stderr.write(`Modo inválido: ${mode}\n`);
