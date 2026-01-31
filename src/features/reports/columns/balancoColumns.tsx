@@ -1,14 +1,14 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import type { BalancoReportRow } from "@/features/reports/api/reportsData";
+import { formatDateBR } from "@/lib/dates";
 
 export const balancoColumns: ColumnDef<BalancoReportRow>[] = [
   {
     accessorKey: "data",
     header: "Data",
     cell: ({ row }) => {
-      const date = new Date(row.getValue("data"));
-      return date.toLocaleDateString("pt-BR");
+      return formatDateBR(String(row.getValue("data")));
     },
     enableSorting: true,
   },

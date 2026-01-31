@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { isoDateFromDateInTimeZone } from "@/lib/dates";
 
 type ReportDataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -104,7 +105,7 @@ export function ReportDataTable<TData, TValue>({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatório");
     
-    const timestamp = new Date().toISOString().split("T")[0];
+    const timestamp = isoDateFromDateInTimeZone(new Date());
     XLSX.writeFile(wb, `${exportFileName}_${timestamp}.xlsx`);
   };
 

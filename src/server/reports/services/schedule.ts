@@ -1,3 +1,5 @@
+import { addDaysToIsoDateOnly, isoDateFromDateInTimeZone, isoDateFromPartsInTimeZone } from "@/lib/dates";
+
 export function buildCron(input: {
   recurrence: "daily" | "weekly" | "monthly";
   time: string;
@@ -77,18 +79,19 @@ export function resolvePeriodWindow(input: {
   window: "last7d" | "last30d" | "monthToDate" | "yearToDate";
   now: Date;
 }) {
-  const end = new Date(Date.UTC(input.now.getUTCFullYear(), input.now.getUTCMonth(), input.now.getUTCDate()));
-  const start = new Date(end.getTime());
+  const periodEnd = isoDateFromDateInTimeZone(input.now);
 
-  if (input.window === "last7d") start.setUTCDate(start.getUTCDate() - 6);
-  if (input.window === "last30d") start.setUTCDate(start.getUTCDate() - 29);
-  if (input.window === "monthToDate") start.setUTCDate(1);
-  if (input.window === "yearToDate") {
-    start.setUTCMonth(0);
-    start.setUTCDate(1);
+  if (input.window === "last7d") return { periodStart: addDaysToIsoDateOnly(periodEnd, -6), periodEnd };
+  if (input.window === "last30d") return { periodStart: addDaysToIsoDateOnly(periodEnd, -29), periodEnd };
+
+  const [yearStr, monthStr] = periodEnd.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+
+  if (input.window === "monthToDate") {
+    return { periodStart: isoDateFromPartsInTimeZone({ year, month, day: 1 }), periodEnd };
   }
 
-  const toIso = (d: Date) => d.toISOString().slice(0, 10);
-  return { periodStart: toIso(start), periodEnd: toIso(end) };
+  return { periodStart: isoDateFromPartsInTimeZone({ year, month: 1, day: 1 }), periodEnd };
 }
 

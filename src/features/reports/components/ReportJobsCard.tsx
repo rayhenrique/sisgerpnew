@@ -57,7 +57,7 @@ export function ReportJobsCard(props: {
                       <div className="truncate">{j.report_key}</div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-slate-700">
-                      {j.period_start} → {j.period_end}
+                      {formatDateBR(j.period_start)} → {formatDateBR(j.period_end)}
                     </TableCell>
                     <TableCell className="text-slate-700">{j.format}</TableCell>
                     <TableCell>

@@ -1,8 +1,8 @@
 import type { ReportJob } from "@/features/reports/types";
+import { addDaysToIsoDateOnly, formatDateBR as formatDateBRLib, isoDateFromDateInTimeZone, isoDateFromPartsInTimeZone } from "@/lib/dates";
 
 export function formatDateBR(isoDate: string) {
-  const date = new Date(isoDate);
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  return formatDateBRLib(isoDate);
 }
 
 export function formatMoney(value: number) {
@@ -23,25 +23,20 @@ export function statusVariant(s: ReportJob["status"]) {
 }
 
 export function guessRangePreset(preset: string) {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const today = `${yyyy}-${mm}-${dd}`;
-  const toIso = (d: Date) => d.toISOString().slice(0, 10);
+  const today = isoDateFromDateInTimeZone(new Date());
+  const [yearStr, monthStr] = today.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
 
   if (preset === "today") return { start: today, end: today };
-  if (preset === "7d") {
-    const start = new Date(now.getTime());
-    start.setDate(start.getDate() - 6);
-    return { start: toIso(start), end: today };
-  }
-  if (preset === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: toIso(start), end: today };
-  }
-  const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-  return { start: toIso(prevStart), end: toIso(prevEnd) };
+  if (preset === "7d") return { start: addDaysToIsoDateOnly(today, -6), end: today };
+  if (preset === "month") return { start: isoDateFromPartsInTimeZone({ year, month, day: 1 }), end: today };
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevStart = isoDateFromPartsInTimeZone({ year: prevYear, month: prevMonth, day: 1 });
+  const prevLastDayNumber = new Date(Date.UTC(prevYear, prevMonth, 0, 12, 0, 0)).getUTCDate();
+  const prevEnd = isoDateFromPartsInTimeZone({ year: prevYear, month: prevMonth, day: prevLastDayNumber });
+  return { start: prevStart, end: prevEnd };
 }
 

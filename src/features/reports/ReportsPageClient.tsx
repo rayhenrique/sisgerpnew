@@ -21,6 +21,7 @@ import { balancoColumns } from "@/features/reports/columns/balancoColumns";
 import type { ReceitaReportRow } from "@/features/reports/types/receitas";
 import type { DespesaReportRow, BalancoReportRow } from "@/features/reports/api/reportsData";
 import { fetchReceitasReport, fetchDespesasReport, fetchBalancoReport } from "@/features/reports/api/reportsData";
+import { formatDateBR, isoDateFromDateInTimeZone, isoDateFromPartsInTimeZone } from "@/lib/dates";
 
 type ReportType = "receitas" | "despesas" | "balanco" | "classificacao";
 
@@ -266,27 +267,31 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
   }, [grupoId, categories]);
 
   const applyDatePreset = (preset: DatePreset) => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const today = isoDateFromDateInTimeZone(new Date());
+    const [yearStr, monthStr] = today.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
 
     switch (preset) {
       case "today": {
-        const dateStr = today.toISOString().split("T")[0];
-        setStartDate(dateStr);
-        setEndDate(dateStr);
+        setStartDate(today);
+        setEndDate(today);
         break;
       }
       case "thisMonth": {
-        const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
-        const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
+        const firstDay = isoDateFromPartsInTimeZone({ year, month, day: 1 });
+        const lastDayNumber = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+        const lastDay = isoDateFromPartsInTimeZone({ year, month, day: lastDayNumber });
         setStartDate(firstDay);
         setEndDate(lastDay);
         break;
       }
       case "lastMonth": {
-        const firstDay = new Date(year, month - 1, 1).toISOString().split("T")[0];
-        const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const firstDay = isoDateFromPartsInTimeZone({ year: prevYear, month: prevMonth, day: 1 });
+        const lastDayNumber = new Date(Date.UTC(prevYear, prevMonth, 0, 12, 0, 0)).getUTCDate();
+        const lastDay = isoDateFromPartsInTimeZone({ year: prevYear, month: prevMonth, day: lastDayNumber });
         setStartDate(firstDay);
         setEndDate(lastDay);
         break;
@@ -397,7 +402,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
     }
 
     const reportTitle = REPORT_CARDS.find((c) => c.id === type)?.title || "Relatório";
-    const currentDate = new Date().toLocaleDateString("pt-BR");
+    const currentDate = formatDateBR(isoDateFromDateInTimeZone(new Date()));
     const currentDateTime = new Date().toLocaleString("pt-BR");
 
     // Calculate total
@@ -443,7 +448,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
         .map(
           (row) => `
         <tr>
-          <td>${new Date(row.data).toLocaleDateString("pt-BR")}</td>
+          <td>${formatDateBR(row.data)}</td>
           <td>${row.descricao}</td>
           <td>${row.fonte}</td>
           <td>${row.bloco}</td>
@@ -462,7 +467,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
         .map(
           (row) => `
         <tr>
-          <td>${new Date(row.data).toLocaleDateString("pt-BR")}</td>
+          <td>${formatDateBR(row.data)}</td>
           <td>${row.descricao}</td>
           <td>${row.classificacao}</td>
           <td>${row.fonte}</td>
@@ -482,7 +487,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
         .map(
           (row) => `
         <tr>
-          <td>${new Date(row.data).toLocaleDateString("pt-BR")}</td>
+          <td>${formatDateBR(row.data)}</td>
           <td>${row.tipo}</td>
           <td>${row.descricao}</td>
           <td>${row.fonte}</td>
@@ -630,8 +635,8 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
           </div>
 
           <div class="filters">
-            ${filters.startDate ? `<p><strong>Data Inicial:</strong> ${new Date(filters.startDate).toLocaleDateString("pt-BR")}</p>` : ""}
-            ${filters.endDate ? `<p><strong>Data Final:</strong> ${new Date(filters.endDate).toLocaleDateString("pt-BR")}</p>` : ""}
+            ${filters.startDate ? `<p><strong>Data Inicial:</strong> ${formatDateBR(filters.startDate)}</p>` : ""}
+            ${filters.endDate ? `<p><strong>Data Final:</strong> ${formatDateBR(filters.endDate)}</p>` : ""}
             ${filters.fonteId ? `<p><strong>Filtros de categoria aplicados</strong></p>` : ""}
             ${filters.classificationId ? `<p><strong>Filtro de classificação aplicado</strong></p>` : ""}
             <p><strong>Total de registros:</strong> ${data.length}</p>
@@ -956,7 +961,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
               }
               data={previewData as any}
               searchPlaceholder="Buscar por descrição, fonte..."
-              exportFileName={`relatorio_${reportType}_${new Date().toISOString().split("T")[0]}`}
+              exportFileName={`relatorio_${reportType}_${isoDateFromDateInTimeZone(new Date())}`}
             />
           </div>
         </Card>

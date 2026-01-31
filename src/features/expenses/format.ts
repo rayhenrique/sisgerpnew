@@ -1,3 +1,5 @@
+import { formatDateBR as formatDateBRLib } from "@/lib/dates";
+
 export function formatCurrencyBRL(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -6,7 +8,6 @@ export function formatCurrencyBRL(value: number) {
 }
 
 export function formatDateBR(isoDate: string) {
-  const date = new Date(isoDate);
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  return formatDateBRLib(isoDate);
 }
 

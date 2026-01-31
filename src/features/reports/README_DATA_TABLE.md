@@ -58,14 +58,14 @@ export type ReceitaReportRow = {
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { ReceitaReportRow } from "@/features/reports/types/receitas";
+import { formatDateBR } from "@/lib/dates";
 
 export const receitasColumns: ColumnDef<ReceitaReportRow>[] = [
   {
     accessorKey: "data",
     header: "Data",
     cell: ({ row }) => {
-      const date = new Date(row.getValue("data"));
-      return date.toLocaleDateString("pt-BR");
+      return formatDateBR(String(row.getValue("data")));
     },
     enableSorting: true,
   },
@@ -166,8 +166,7 @@ function MyReportPage() {
 **Date Formatting:**
 \`\`\`typescript
 cell: ({ row }) => {
-  const date = new Date(row.getValue("data"));
-  return date.toLocaleDateString("pt-BR");
+  return formatDateBR(String(row.getValue("data")));
 }
 \`\`\`
 

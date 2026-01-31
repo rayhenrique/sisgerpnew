@@ -1,14 +1,14 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import type { DespesaReportRow } from "@/features/reports/api/reportsData";
+import { formatDateBR } from "@/lib/dates";
 
 export const despesasColumns: ColumnDef<DespesaReportRow>[] = [
   {
     accessorKey: "data",
     header: "Data",
     cell: ({ row }) => {
-      const date = new Date(row.getValue("data"));
-      return date.toLocaleDateString("pt-BR");
+      return formatDateBR(String(row.getValue("data")));
     },
     enableSorting: true,
   },

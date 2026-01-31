@@ -1,5 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ReceitaReportRow } from "@/features/reports/types/receitas";
+import { compareIsoDateOnlyAsc } from "@/lib/dates";
 
 export type ReportFilters = {
   startDate?: string;
@@ -227,7 +228,7 @@ export async function fetchBalancoReport(filters: ReportFilters): Promise<Balanc
 
   // Combine and sort
   const allTransactions = [...receitasFormatted, ...despesasFormatted].sort(
-    (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
+    (a, b) => compareIsoDateOnlyAsc(a.data, b.data)
   );
 
   // Calculate running balance

@@ -109,7 +109,7 @@ export function ReportExecutionPageClient(props: { id: string }) {
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm text-slate-600">Período</div>
               <div className="text-sm font-medium text-slate-900">
-                {job.period_start} → {job.period_end}
+                {formatDateBR(job.period_start)} → {formatDateBR(job.period_end)}
               </div>
             </div>
             <div className="flex items-center justify-between gap-2">
