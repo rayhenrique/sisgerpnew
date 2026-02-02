@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 
@@ -13,6 +12,11 @@ import {
   MAX_BRL_AMOUNT,
   parseBRLCurrencyToNumber,
 } from "@/features/revenues/currency";
+import {
+  expenseUpsertSchema,
+  MAX_AMOUNT_LABEL,
+  type ExpenseUpsertFormValues,
+} from "@/features/expenses/validation";
 import {
   createExpense,
   fetchExpenseClassificationsForSelect,
@@ -31,31 +35,7 @@ import { Input } from "@/components/ui/input";
 
 type Mode = "create" | "edit";
 
-const MAX_AMOUNT_LABEL = `R$ ${formatBRLCurrencyInput(MAX_BRL_AMOUNT)}`;
-
-const schema = z.object({
-  description: z.string().trim().min(2, "Informe a descrição"),
-  amountText: z
-    .string()
-    .trim()
-    .min(1, "Informe o valor")
-    .refine((v) => {
-      const parsed = parseBRLCurrencyToNumber(v);
-      return Number.isFinite(parsed) && parsed > 0;
-    }, "Valor inválido")
-    .refine((v) => {
-      const parsed = parseBRLCurrencyToNumber(v);
-      return Number.isFinite(parsed) && parsed <= MAX_BRL_AMOUNT;
-    }, `Valor máximo é ${MAX_AMOUNT_LABEL}`),
-  date: z.string().min(1, "Informe a data"),
-  fonteId: z.string().min(1, "Selecione a fonte"),
-  blocoId: z.string().min(1, "Selecione o bloco"),
-  grupoId: z.string().min(1, "Selecione o grupo"),
-  acaoId: z.string().min(1, "Selecione a ação"),
-  classificationId: z.string().min(1, "Selecione a classificação"),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = ExpenseUpsertFormValues;
 
 function BRLCentsInput({
   value,
@@ -81,8 +61,7 @@ function BRLCentsInput({
   return (
     <Input
       ref={inputRef}
-      inputMode="numeric"
-      pattern="\\d*"
+      inputMode="decimal"
       placeholder="R$ 0,00"
       value={value}
       onFocus={() => {
@@ -210,7 +189,7 @@ export function ExpenseUpsertModal({
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(expenseUpsertSchema),
     defaultValues: {
       description: expense?.description ?? "",
       amountText:
