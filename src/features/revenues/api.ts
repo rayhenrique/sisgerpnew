@@ -1,8 +1,31 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Category, Revenue, RevenueRow } from "@/features/revenues/types";
 
+function friendlySupabaseMessage(error: {
+  message: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
+}) {
+  const raw = error.message ?? "Erro ao comunicar com o banco de dados";
+  const code = error.code ?? "";
+
+  if (code === "23502") return "Campos obrigatórios não preenchidos.";
+  if (code === "23503") return "Referência inválida (categoria).";
+  if (code === "23505") return "Registro duplicado.";
+  if (code === "22P02") return "Formato inválido em um dos campos.";
+  if (code === "22007") return "Data inválida.";
+
+  const lower = raw.toLowerCase();
+  if (lower.includes("row-level security") || lower.includes("violates row level security")) {
+    return "Sem permissão para executar esta operação.";
+  }
+
+  return raw;
+}
+
 function wrapSupabaseError(error: { message: string; code?: string; details?: string | null; hint?: string | null }) {
-  const err = new Error(error.message);
+  const err = new Error(friendlySupabaseMessage(error));
   (err as unknown as { code?: string }).code = error.code;
   (err as unknown as { details?: string | null }).details = error.details ?? null;
   (err as unknown as { hint?: string | null }).hint = error.hint ?? null;
@@ -129,8 +152,17 @@ export async function createRevenue(input: {
     );
   }
 
+  const description = input.description.trim();
+  if (description.length < 2) throw new Error("Informe a descrição");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Valor inválido");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Data inválida");
+  if (!input.fonteId) throw new Error("Selecione a fonte");
+  if (!input.blocoId) throw new Error("Selecione o bloco");
+  if (!input.grupoId) throw new Error("Selecione o grupo");
+  if (!input.acaoId) throw new Error("Selecione a ação");
+
   const payload = {
-    description: input.description,
+    description,
     amount: input.amount,
     date: input.date,
     source_id: input.fonteId,
@@ -174,8 +206,17 @@ export async function updateRevenue(
     );
   }
 
+  const description = input.description.trim();
+  if (description.length < 2) throw new Error("Informe a descrição");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Valor inválido");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Data inválida");
+  if (!input.fonteId) throw new Error("Selecione a fonte");
+  if (!input.blocoId) throw new Error("Selecione o bloco");
+  if (!input.grupoId) throw new Error("Selecione o grupo");
+  if (!input.acaoId) throw new Error("Selecione a ação");
+
   const payload = {
-    description: input.description,
+    description,
     amount: input.amount,
     date: input.date,
     source_id: input.fonteId,
