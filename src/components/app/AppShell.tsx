@@ -276,9 +276,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>My account</DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/configuracoes">Settings</Link>
+                  <Link href="/minha-conta">Minha conta</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/configuracoes">Configurações</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -288,7 +290,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     router.replace("/login");
                   }}
                 >
-                  Sign out
+                  Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

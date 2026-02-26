@@ -53,6 +53,7 @@ export function getPageTitle(pathname: string) {
   if (prefixMatch) return prefixMatch.label;
 
   if (pathname === "/" || pathname === "/dashboard") return "";
+  if (pathname === "/minha-conta" || pathname.startsWith("/minha-conta/")) return "Minha Conta";
   if (pathname.startsWith("/admin")) return "Administração";
 
   return "SISGERP";
