@@ -4,19 +4,23 @@ import type { CreateReportJobInput, ReportJobRow } from "@/server/reports/models
 import { findReportDefinition } from "@/server/reports/services/catalog";
 import { sha256Hex, stableJson } from "@/server/reports/services/hash";
 import { uploadReportFile, createSignedDownloadUrl } from "@/server/reports/services/storage";
-import { fetchSummaryByCategory, fetchTransactions } from "@/server/reports/services/reportData";
+import { fetchSummaryByCategory, fetchTransactions, fetchBalanceByCategoryLevel } from "@/server/reports/services/reportData";
 import {
   renderSummaryByCategoryCsv,
   renderTransactionsCsv,
+  renderBalanceByCategoryLevelCsv,
 } from "@/server/reports/views/renderCsv";
 import {
   renderSummaryByCategoryXlsx,
   renderTransactionsXlsx,
+  renderBalanceByCategoryLevelXlsx,
 } from "@/server/reports/views/renderXlsx";
 import {
   renderSummaryByCategoryPdf,
   renderTransactionsPdf,
+  renderBalanceByCategoryLevelPdf,
 } from "@/server/reports/views/renderPdf";
+
 
 function toDateOnly(iso: string) {
   return iso.slice(0, 10);
@@ -240,6 +244,34 @@ export async function runJob(input: {
                 rows,
                 periodStart: job.period_start,
                 periodEnd: job.period_end,
+              });
+      await uploadReportFile({
+        supabase: input.supabase,
+        path,
+        contentType: contentType(job.format),
+        bytes,
+      });
+    } else if (job.report_key === "balance_by_category_level") {
+      // Parse levels from job params stored in category field (comma-separated) or use all
+      const levels = job.category && job.category !== "Financeiro"
+        ? (job.category.split(",").map((l) => l.trim()) as Array<"fonte" | "bloco" | "grupo" | "acao">)
+        : null;
+      const rows = await fetchBalanceByCategoryLevel({
+        supabase: input.supabase,
+        periodStart: job.period_start || null,
+        periodEnd: job.period_end || null,
+        levels,
+        categoryId: input.categoryId ?? job.category_id ?? null,
+      });
+      const bytes =
+        job.format === "CSV"
+          ? new TextEncoder().encode(renderBalanceByCategoryLevelCsv(rows))
+          : job.format === "XLSX"
+            ? renderBalanceByCategoryLevelXlsx(rows)
+            : await renderBalanceByCategoryLevelPdf({
+                rows,
+                periodStart: job.period_start || null,
+                periodEnd: job.period_end || null,
               });
       await uploadReportFile({
         supabase: input.supabase,

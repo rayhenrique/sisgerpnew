@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, FileDown, Loader2, PieChart, RotateCcw, Scale, Sheet, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, FileDown, Layers, Loader2, PieChart, RotateCcw, Scale, Sheet, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,13 @@ import { ReportDataTable } from "@/features/reports/ReportDataTable";
 import { receitasColumns } from "@/features/reports/columns/receitasColumns";
 import { despesasColumns } from "@/features/reports/columns/despesasColumns";
 import { balancoColumns } from "@/features/reports/columns/balancoColumns";
+import { saldosColumns } from "@/features/reports/columns/saldosColumns";
 import type { ReceitaReportRow } from "@/features/reports/types/receitas";
-import type { DespesaReportRow, BalancoReportRow } from "@/features/reports/api/reportsData";
-import { fetchReceitasReport, fetchDespesasReport, fetchBalancoReport } from "@/features/reports/api/reportsData";
+import type { DespesaReportRow, BalancoReportRow, SaldoReportRow } from "@/features/reports/api/reportsData";
+import { fetchReceitasReport, fetchDespesasReport, fetchBalancoReport, fetchSaldosReport } from "@/features/reports/api/reportsData";
 import { formatDateBR, isoDateFromDateInTimeZone, isoDateFromPartsInTimeZone } from "@/lib/dates";
 
-type ReportType = "receitas" | "despesas" | "balanco" | "classificacao";
+type ReportType = "receitas" | "despesas" | "balanco" | "classificacao" | "saldos";
 
 type ReportCardConfig = {
   id: ReportType;
@@ -66,6 +67,14 @@ const REPORT_CARDS: ReportCardConfig[] = [
     icon: PieChart,
     iconColor: "text-purple-600",
     iconBg: "bg-purple-50",
+  },
+  {
+    id: "saldos",
+    title: "Saldos",
+    description: "Saldo por nível de categoria (Fonte, Bloco, Grupo, Ação).",
+    icon: Layers,
+    iconColor: "text-amber-600",
+    iconBg: "bg-amber-50",
   },
 ];
 
@@ -160,7 +169,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
   // UI state
   const [loading, setLoading] = React.useState(false);
   const [previewData, setPreviewData] = React.useState<
-    ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[] | null
+    ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[] | SaldoReportRow[] | null
   >(null);
   const [previewLoading, setPreviewLoading] = React.useState(false);
   const [previewError, setPreviewError] = React.useState<string | null>(null);
@@ -299,7 +308,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
     }
   };
 
-  const handlePreview = async () => {
+  const handlePreview = React.useCallback(async () => {
     setPreviewLoading(true);
     setPreviewError(null);
     try {
@@ -313,7 +322,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
         classificationId: classificationId || null,
       };
 
-      let data: ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[];
+      let data: ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[] | SaldoReportRow[];
 
       switch (reportType) {
         case "receitas":
@@ -329,6 +338,9 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
           // For now, use despesas data grouped by classification
           data = await fetchDespesasReport(filters);
           break;
+        case "saldos":
+          data = await fetchSaldosReport(filters);
+          break;
         default:
           data = [];
       }
@@ -340,7 +352,14 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
     } finally {
       setPreviewLoading(false);
     }
-  };
+  }, [startDate, endDate, fonteId, blocoId, grupoId, acaoId, classificationId, reportType]);
+
+  // Auto-fetch saldos when filters change or component mounts
+  React.useEffect(() => {
+    if (reportType === "saldos") {
+      void handlePreview();
+    }
+  }, [reportType, handlePreview]);
 
   const handleDownload = async (format: "pdf" | "excel") => {
     setLoading(true);
@@ -391,7 +410,7 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
 
   const generatePDF = (
     type: ReportType,
-    data: ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[],
+    data: ReceitaReportRow[] | DespesaReportRow[] | BalancoReportRow[] | SaldoReportRow[],
     filters: any
   ) => {
     // Create a new window for printing
@@ -502,6 +521,27 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
           </td>
           <td style="text-align: right; color: ${row.saldo >= 0 ? "#2563eb" : "#dc2626"}; font-weight: 700;">
             ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Math.abs(row.saldo))}
+          </td>
+        </tr>
+      `
+        )
+        .join("");
+    } else if (type === "saldos") {
+      const saldosData = data as SaldoReportRow[];
+      tableRows = saldosData
+        .map(
+          (row) => `
+        <tr>
+          <td style="text-transform: capitalize;">${row.nivel}</td>
+          <td>${row.categoria}</td>
+          <td style="text-align: right; color: #16a34a; font-weight: 600;">
+            ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.receitas)}
+          </td>
+          <td style="text-align: right; color: #dc2626; font-weight: 600;">
+            ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.despesas)}
+          </td>
+          <td style="text-align: right; color: ${row.saldo >= 0 ? "#2563eb" : "#dc2626"}; font-weight: 700;">
+            ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.saldo)}
           </td>
         </tr>
       `
@@ -650,6 +690,8 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
                     ? "<th>Data</th><th>Descrição</th><th>Fonte</th><th>Bloco</th><th>Grupo</th><th>Ação</th><th style='text-align: right;'>Valor</th>"
                     : type === "despesas" || type === "classificacao"
                     ? "<th>Data</th><th>Descrição</th><th>Classificação</th><th>Fonte</th><th>Bloco</th><th>Grupo</th><th>Ação</th><th style='text-align: right;'>Valor</th>"
+                    : type === "saldos"
+                    ? "<th>Nível</th><th>Categoria</th><th style='text-align: right;'>Receitas</th><th style='text-align: right;'>Despesas</th><th style='text-align: right;'>Saldo</th>"
                     : "<th>Data</th><th>Tipo</th><th>Descrição</th><th>Fonte</th><th>Bloco</th><th>Grupo</th><th>Ação</th><th style='text-align: right;'>Valor</th><th style='text-align: right;'>Saldo</th>"
                 }
               </tr>
@@ -663,6 +705,8 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
             ${
               type === "balanco"
                 ? `Saldo Final: <span style="color: ${saldoFinal >= 0 ? "#2563eb" : "#dc2626"};">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(saldoFinal)}</span>`
+                : type === "saldos"
+                ? ""
                 : `Total: <span style="color: ${type === "receitas" ? "#16a34a" : "#dc2626"};">${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalValue)}</span>`
             }
           </div>
@@ -955,6 +999,8 @@ function ReportFilterView({ reportType, onBack }: ReportFilterViewProps) {
               columns={
                 (reportType === "receitas"
                   ? receitasColumns
+                  : reportType === "saldos"
+                  ? saldosColumns
                   : reportType === "despesas" || reportType === "classificacao"
                   ? despesasColumns
                   : balancoColumns) as any

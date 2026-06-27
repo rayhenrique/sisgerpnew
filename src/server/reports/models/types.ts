@@ -10,6 +10,8 @@ export type ReportDefinition = {
   supportsCategoryFilter: boolean;
 };
 
+export type CategoryLevel = "fonte" | "bloco" | "grupo" | "acao";
+
 export type CreateReportJobInput = {
   reportKey: string;
   category: string;
@@ -18,6 +20,16 @@ export type CreateReportJobInput = {
   format: ReportFormat;
   categoryId?: string | null;
   useCache: boolean;
+  levels?: CategoryLevel[];
+};
+
+export type BalanceByCategoryLevelRow = {
+  level: CategoryLevel;
+  categoryId: string;
+  categoryName: string;
+  receitas: number;
+  despesas: number;
+  saldo: number;
 };
 
 export type ReportJobRow = {

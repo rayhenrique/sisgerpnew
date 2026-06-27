@@ -244,3 +244,120 @@ export async function fetchBalancoReport(filters: ReportFilters): Promise<Balanc
 
   return combined;
 }
+
+export type SaldoReportRow = {
+  nivel: "fonte" | "bloco" | "grupo" | "acao";
+  categoriaId: string;
+  categoria: string;
+  receitas: number;
+  despesas: number;
+  saldo: number;
+};
+
+export async function fetchSaldosReport(filters: ReportFilters): Promise<SaldoReportRow[]> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    throw new Error("Supabase não configurado");
+  }
+
+  // Determine allowed levels
+  // In the UI, the user selects a specific category from the cascading dropdowns.
+  // We'll calculate the balance for all categories that match the filter.
+  // To keep it simple and powerful, we will fetch all categories, then apply the hierarchy filter.
+  const { data: catData, error: catErr } = await supabase
+    .from("categories")
+    .select("id, name, type, parent_id")
+    .is("deleted_at", null);
+  
+  if (catErr) throw new Error(catErr.message);
+
+  const allCats = (catData || []).map((c: any) => ({
+    id: String(c.id),
+    name: String(c.name || ""),
+    type: String(c.type || ""),
+    parent_id: c.parent_id ? String(c.parent_id) : null,
+  }));
+
+  // Figure out the lowest level filter selected
+  let filterId = filters.acaoId || filters.grupoId || filters.blocoId || filters.fonteId || null;
+  
+  let allowedIds: Set<string> | null = null;
+  if (filterId) {
+    allowedIds = new Set<string>();
+    const queue = [filterId];
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      allowedIds.add(cur);
+      for (const c of allCats) {
+        if (c.parent_id === cur) queue.push(c.id);
+      }
+    }
+  }
+
+  const result: SaldoReportRow[] = [];
+  const levels = ["fonte", "bloco", "grupo", "acao"] as const;
+
+  for (const level of levels) {
+    const levelCats = allCats.filter(
+      (c) => c.type === level && (allowedIds === null || allowedIds.has(c.id))
+    );
+    if (levelCats.length === 0) continue;
+
+    const ids = levelCats.map((c) => c.id);
+    const field = `${level}_id`;
+
+    let revQ = supabase.from("revenues").select(`${field}, amount`).in(field, ids);
+    if (filters.startDate) revQ = revQ.gte("date", filters.startDate);
+    if (filters.endDate) revQ = revQ.lte("date", filters.endDate);
+
+    let expQ = supabase.from("expenses").select(`${field}, amount`).in(field, ids);
+    if (filters.startDate) expQ = expQ.gte("date", filters.startDate);
+    if (filters.endDate) expQ = expQ.lte("date", filters.endDate);
+
+    const [{ data: revData, error: revErr }, { data: expData, error: expErr }] = await Promise.all([
+      revQ,
+      expQ,
+    ]);
+
+    if (revErr) throw new Error(`Erro ao buscar receitas para ${level}: ${revErr.message}`);
+    if (expErr) throw new Error(`Erro ao buscar despesas para ${level}: ${expErr.message}`);
+
+    const receitasByCat = new Map<string, number>();
+    for (const r of (revData || []) as any[]) {
+      const cid = r[field] == null ? null : String(r[field]);
+      if (!cid) continue;
+      receitasByCat.set(cid, (receitasByCat.get(cid) ?? 0) + parseFloat(r.amount));
+    }
+
+    const despesasByCat = new Map<string, number>();
+    for (const r of (expData || []) as any[]) {
+      const cid = r[field] == null ? null : String(r[field]);
+      if (!cid) continue;
+      despesasByCat.set(cid, (despesasByCat.get(cid) ?? 0) + parseFloat(r.amount));
+    }
+
+    for (const cat of levelCats) {
+      const receitas = receitasByCat.get(cat.id) ?? 0;
+      const despesas = despesasByCat.get(cat.id) ?? 0;
+
+      result.push({
+        nivel: level,
+        categoriaId: cat.id,
+        categoria: cat.name,
+        receitas,
+        despesas,
+        saldo: receitas - despesas,
+      });
+    }
+  }
+
+  // Sort by level order, then name
+  const levelOrder = { fonte: 0, bloco: 1, grupo: 2, acao: 3 };
+  result.sort((a, b) => {
+    const lo = levelOrder[a.nivel] - levelOrder[b.nivel];
+    if (lo !== 0) return lo;
+    return a.categoria.localeCompare(b.categoria, "pt-BR");
+  });
+
+  return result;
+}

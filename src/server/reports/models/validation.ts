@@ -9,6 +9,8 @@ const isoDate = z
 
 export const reportFormatSchema = z.enum(["PDF", "XLSX", "CSV"]);
 
+const categoryLevelSchema = z.enum(["fonte", "bloco", "grupo", "acao"]);
+
 export const createReportJobSchema = z
   .object({
     reportKey: z.string().min(1),
@@ -18,6 +20,7 @@ export const createReportJobSchema = z
     format: reportFormatSchema,
     categoryId: z.string().nullable().optional(),
     useCache: z.boolean().default(true),
+    levels: z.array(categoryLevelSchema).optional(),
   })
   .refine(
     (v) => v.periodStart <= v.periodEnd,

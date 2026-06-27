@@ -15,6 +15,14 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
     description: "Consolida valores do período agrupados por categoria.",
     supportsCategoryFilter: true,
   },
+  {
+    key: "balance_by_category_level",
+    category: "Financeiro",
+    name: "Saldo por Nível de Categoria",
+    description:
+      "Exibe receitas, despesas e saldo agrupados por nível hierárquico (Fonte, Bloco, Grupo, Ação). Permite filtrar por período e por categoria específica.",
+    supportsCategoryFilter: true,
+  },
 ];
 
 export function findReportDefinition(key: string) {

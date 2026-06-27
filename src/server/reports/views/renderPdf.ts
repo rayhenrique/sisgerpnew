@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 import type { TransactionRow, SummaryByCategoryRow } from "@/server/reports/services/reportData";
+import type { BalanceByCategoryLevelRow } from "@/server/reports/models/types";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -8,6 +9,13 @@ function formatMoney(value: number) {
     currency: "BRL",
   }).format(value);
 }
+
+const LEVEL_LABEL: Record<string, string> = {
+  fonte: "Fonte",
+  bloco: "Bloco",
+  grupo: "Grupo",
+  acao: "Ação",
+};
 
 async function renderSimpleTable(input: {
   title: string;
@@ -82,3 +90,26 @@ export async function renderSummaryByCategoryPdf(input: {
   });
 }
 
+export async function renderBalanceByCategoryLevelPdf(input: {
+  rows: BalanceByCategoryLevelRow[];
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}) {
+  const subtitle =
+    input.periodStart && input.periodEnd
+      ? `Período: ${input.periodStart} a ${input.periodEnd}`
+      : "Saldo acumulado (todos os períodos)";
+
+  return renderSimpleTable({
+    title: "Relatório: Saldo por Nível de Categoria",
+    subtitle,
+    columns: ["Nível", "Categoria", "Receitas", "Despesas", "Saldo"],
+    rows: input.rows.map((r) => [
+      LEVEL_LABEL[r.level] ?? r.level,
+      r.categoryName,
+      formatMoney(r.receitas),
+      formatMoney(r.despesas),
+      formatMoney(r.saldo),
+    ]),
+  });
+}
