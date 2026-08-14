@@ -6,8 +6,9 @@ Este guia instala e publica o SISGERP (Next.js) na VPS usando CloudPanel (Hostin
 
 Você pode fazer o deploy de 3 formas:
 
-- **UI do CloudPanel + Terminal (recomendado)**: configura o site no CloudPanel e faz build/ajustes por SSH quando necessário.
-- **Somente Terminal**: siga [CLOUDPANEL_DEPLOY_TERMINAL.md](file:///c:/Users/rayhe/OneDrive/%C3%81rea%20de%20Trabalho/projetos/sisgerp/deploy/CLOUDPANEL_DEPLOY_TERMINAL.md).
+- **Instância Senador Rui Palmeira**: siga o manual específico em [INSTANCIA_SENADOR_RUI_PALMEIRA.md](INSTANCIA_SENADOR_RUI_PALMEIRA.md).
+- **UI do CloudPanel + Terminal (geral)**: configura o site no CloudPanel e faz build/ajustes por SSH quando necessário.
+- **Somente Terminal (geral)**: siga [CLOUDPANEL_DEPLOY_TERMINAL.md](CLOUDPANEL_DEPLOY_TERMINAL.md).
 - **UI completa (Git/Build/Start)**: se o seu CloudPanel tiver esses campos visíveis no site Node.js.
 
 ## Pré-requisitos
