@@ -65,6 +65,21 @@ supabase migration up --db-url "postgresql://postgres:[YOUR-PASSWORD]@db.zzdybdb
 5. Paste into the SQL Editor
 6. Click "Run" to execute
 
+### Option 4: Optional Clean Production Data Migration (0015)
+
+If you want to clear sample/demonstration data (Categories, Expense Classifications, Expenses, Revenues, City Settings) and start with an empty database:
+
+```sql
+-- Run in Supabase SQL Editor:
+-- File: supabase/migrations/0015_clean_sample_data.sql
+truncate table public.expenses restart identity cascade;
+truncate table public.revenues restart identity cascade;
+truncate table public.expense_classifications restart identity cascade;
+truncate table public.categories restart identity cascade;
+truncate table public.city_settings restart identity cascade;
+```
+
+
 ## Verifying Migration
 
 After applying the migration, verify it was successful:

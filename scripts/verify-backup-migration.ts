@@ -4,11 +4,12 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
-// Load environment variables from .env.local
-const envPath = join(process.cwd(), '.env.local');
+// Load environment variables from .env.local or .env
+const envLocalPath = join(process.cwd(), '.env.local');
+const envPath = existsSync(envLocalPath) ? envLocalPath : join(process.cwd(), '.env');
 const envContent = readFileSync(envPath, 'utf-8');
 const envVars: Record<string, string> = {};
 
@@ -78,6 +79,19 @@ async function verifyMigration() {
     allChecksPass = false;
   } else {
     console.log('✅ restore_jobs table exists');
+  }
+
+  // Check if backups storage bucket exists
+  console.log('Checking backups storage bucket...');
+  const { data: bucketData, error: bucketError } = await supabase
+    .storage
+    .getBucket('backups');
+
+  if (bucketError) {
+    console.error('❌ backups storage bucket check failed:', bucketError.message);
+    allChecksPass = false;
+  } else {
+    console.log('✅ backups storage bucket exists');
   }
 
   // Check RLS policies by attempting operations
