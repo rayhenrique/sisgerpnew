@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -9,6 +10,24 @@
   --sis-sidebar-text-muted: rgba(248, 250, 252, 0.75);
   --background: var(--sis-bg);
   --foreground: #111827;
+
+  /* Cores Painel Gestor */
+  --ink: #3f1a11;
+  --ink-soft: #6b4a3f;
+  --brick: #c0472a;
+  --orange: #e8621f;
+  --sun: #f39a1f;
+  --yellow: #f5c518;
+  --river: #1f6fb2;
+  --land: #4fa23e;
+  --paper: #f6f2ea;
+  --card: #ffffff;
+  --line: #e7ddd1;
+  --muted: #8a7a6f;
+  --ok: #4fa23e;
+  --warn: #f39a1f;
+  --wait: #1f6fb2;
+  --shadow-premium: 0 1px 2px rgba(63,26,17,.06), 0 8px 24px rgba(63,26,17,.06);
 }
 
 @theme inline {
@@ -18,6 +37,28 @@
   --font-mono: var(--font-geist-mono);
   --breakpoint-xs: 320px;
   --breakpoint-xl: 1440px;
+
+  /* Custom colors for Painel Gestor */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-brick: var(--brick);
+  --color-orange: var(--orange);
+  --color-sun: var(--sun);
+  --color-yellow: var(--yellow);
+  --color-river: var(--river);
+  --color-land: var(--land);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-wait: var(--wait);
+
+  /* Fonts and shadows */
+  --font-archivo: 'Archivo', sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --shadow-premium: var(--shadow-premium);
 }
 
 body {

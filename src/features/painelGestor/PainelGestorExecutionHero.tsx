@@ -1,0 +1,54 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+
+export function PainelGestorExecutionHero() {
+  const [width, setWidth] = useState(0);
+
+  // Animate the bar on load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setWidth(68);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="w-full max-w-[1220px] mx-auto px-[22px]">
+      <div className="bg-card border border-line rounded-[16px] p-[22px] shadow-[var(--shadow-premium)] mt-[16px]">
+        
+        <div className="flex justify-between items-baseline flex-wrap gap-[8px]">
+          <h3 className="font-archivo font-extrabold text-[15px] m-0 tracking-[0.01em] text-ink">
+            Total de Execução Financeira
+          </h3>
+          <div className="font-archivo font-black text-[30px] text-land tabular-nums">
+            {width}%
+          </div>
+        </div>
+
+        <div className="h-[22px] rounded-full bg-[#efe7db] mt-[14px] overflow-hidden relative">
+          <i
+            className="block h-full rounded-full bg-gradient-to-r from-[var(--land)] to-[var(--sun)] transition-all duration-1000 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+            style={{ width: `${width}%` }}
+          ></i>
+        </div>
+
+        <div className="flex gap-[22px] flex-wrap mt-[14px] text-[13px] text-ink">
+          <span className="flex items-center">
+            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-land"></i>
+            Paga: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 2.450.000</b>
+          </span>
+          <span className="flex items-center">
+            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-sun"></i>
+            Empenhada: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 890.000</b>
+          </span>
+          <span className="flex items-center">
+            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-river"></i>
+            Enviada: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 320.000</b>
+          </span>
+        </div>
+
+      </div>
+    </div>
+  );
+}
