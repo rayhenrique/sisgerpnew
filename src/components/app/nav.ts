@@ -22,6 +22,7 @@ export type NavItem = {
 
 export const primaryNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", Icon: Home },
+  { label: "Painel Gestor", href: "/painel-gestor", Icon: BarChart3 },
   { label: "Categorias", href: "/categorias", Icon: Tag },
   {
     label: "Classificação de Despesas",

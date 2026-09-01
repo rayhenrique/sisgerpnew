@@ -1,17 +1,21 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { formatCurrencyBRL } from '@/features/dashboard/format';
 
-export function PainelGestorExecutionHero() {
+export function PainelGestorExecutionHero({ totals }: { totals: { receitas: number; despesas: number; saldo: number; } }) {
   const [width, setWidth] = useState(0);
+
+  const percentage = totals.receitas > 0 ? Math.round((totals.despesas / totals.receitas) * 100) : 0;
+  const displayPercentage = Math.min(percentage, 100);
 
   // Animate the bar on load
   useEffect(() => {
     const timer = setTimeout(() => {
-      setWidth(68);
+      setWidth(displayPercentage);
     }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [displayPercentage]);
 
   return (
     <div className="w-full max-w-[1220px] mx-auto px-[22px]">
@@ -19,7 +23,7 @@ export function PainelGestorExecutionHero() {
         
         <div className="flex justify-between items-baseline flex-wrap gap-[8px]">
           <h3 className="font-archivo font-extrabold text-[15px] m-0 tracking-[0.01em] text-ink">
-            Total de Execução Financeira
+            Execução de Despesas sobre Receitas
           </h3>
           <div className="font-archivo font-black text-[30px] text-land tabular-nums">
             {width}%
@@ -35,16 +39,16 @@ export function PainelGestorExecutionHero() {
 
         <div className="flex gap-[22px] flex-wrap mt-[14px] text-[13px] text-ink">
           <span className="flex items-center">
-            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-land"></i>
-            Paga: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 2.450.000</b>
-          </span>
-          <span className="flex items-center">
-            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-sun"></i>
-            Empenhada: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 890.000</b>
+            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-brick"></i>
+            Receitas: <b className="font-archivo font-extrabold tabular-nums ml-1">{formatCurrencyBRL(totals.receitas)}</b>
           </span>
           <span className="flex items-center">
             <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-river"></i>
-            Enviada: <b className="font-archivo font-extrabold tabular-nums ml-1">R$ 320.000</b>
+            Despesas: <b className="font-archivo font-extrabold tabular-nums ml-1">{formatCurrencyBRL(totals.despesas)}</b>
+          </span>
+          <span className="flex items-center">
+            <i className="inline-block w-[10px] h-[10px] rounded-[3px] mr-[7px] align-baseline bg-land"></i>
+            Saldo: <b className="font-archivo font-extrabold tabular-nums ml-1">{formatCurrencyBRL(totals.saldo)}</b>
           </span>
         </div>
 
